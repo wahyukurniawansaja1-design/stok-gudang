@@ -556,11 +556,12 @@ async function generateLaporan() {
   const end = new Date(sampai + "T23:59:59.999");
 
   $("lap-tampil").disabled = true;
-  $("lap-body").innerHTML = '<tr><td colspan="7" class="empty">Memuat...</td></tr>';
+  $("lap-body").innerHTML = '<tr><td colspan="8" class="empty">Memuat...</td></tr>';
 
   try {
     await loadItems();
     
+    // Ambil seluruh riwayat transaksi diurutkan dari yang paling awal
     const { data: txs, error } = await sb
       .from("transactions")
       .select("*")
@@ -577,7 +578,7 @@ async function generateLaporan() {
 
     const stat = {};
     allItems.forEach((i) => { 
-      stat[i.id] = { sesudah: 0, masuk: 0, keluar: 0 }; 
+      stat[i.id] = { awal: 0, masuk: 0, keluar: 0, waktuPertama: null, sudahAdaAwal: false }; 
     });
     const periodTx = [];
 
@@ -585,14 +586,22 @@ async function generateLaporan() {
       const s = stat[t.item_id];
       if (!s) return;
       const jumlah = Number(t.jumlah);
-      const tanda = t.jenis === "masuk" ? 1 : -1;
       const tDate = new Date(t.created_at);
+      const isMasuk = t.jenis === "masuk";
 
-      if (tDate > end) {
-        s.sesudah += tanda * jumlah;
+      if (!s.waktuPertama) {
+        s.waktuPertama = t.created_at;
+      }
+
+      if (tDate < start) {
+        if (isMasuk) s.awal += jumlah;
+        else s.awal -= jumlah;
       } else if (tDate >= start && tDate <= end) {
         periodTx.push(t);
-        if (t.jenis === "masuk") {
+        if (!s.sudahAdaAwal) {
+          s.sudahAdaAwal = true;
+        }
+        if (isMasuk) {
           s.masuk += jumlah;
         } else {
           s.keluar += jumlah;
@@ -602,15 +611,16 @@ async function generateLaporan() {
 
     const rows = allItems.map((i) => {
       const s = stat[i.id];
-      const akhir = Number(i.stok) - s.sesudah;
-      const awal = akhir - s.masuk + s.keluar;
+      const awal = s.awal < 0 ? 0 : s.awal;
+      const akhir = awal + s.masuk - s.keluar;
 
       return {
         item: i,
+        waktu: s.waktuPertama,
         awal: round6(awal),
         masuk: round6(s.masuk),
         keluar: round6(s.keluar),
-        akhir: round6(akhir),
+        akhir: round6(akhir < 0 ? 0 : akhir),
       };
     });
 
@@ -619,7 +629,7 @@ async function generateLaporan() {
   } catch (err) {
     lapData = null;
     $("lap-info").textContent = "";
-    $("lap-body").innerHTML = '<tr><td colspan="7" class="empty">Laporan tidak bisa ditampilkan.</td></tr>';
+    $("lap-body").innerHTML = '<tr><td colspan="8" class="empty">Laporan tidak bisa ditampilkan.</td></tr>';
     msg.textContent = "Gagal memuat laporan: " + err.message;
   } finally {
     $("lap-tampil").disabled = false;
@@ -640,12 +650,15 @@ function renderLaporan() {
     " · " + fmt(nMasuk) + " transaksi masuk · " + fmt(nKeluar) + " transaksi keluar";
 
   if (d.rows.length === 0) {
-    $("lap-body").innerHTML = '<tr><td colspan="7" class="empty">Belum ada data barang.</td></tr>';
+    $("lap-body").innerHTML = '<tr><td colspan="8" class="empty">Belum ada data barang.</td></tr>';
     return;
   }
 
   $("lap-body").innerHTML = d.rows
     .map((r) => {
+      const waktuTeks = r.waktu 
+        ? new Date(r.waktu).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })
+        : "-";
       const masuk = r.masuk > 0
         ? '<td class="r pos">+' + fmt(r.masuk) + "</td>"
         : '<td class="r zero">0</td>';
@@ -654,6 +667,7 @@ function renderLaporan() {
         : '<td class="r zero">0</td>';
       return (
         "<tr>" +
+        "<td>" + esc(waktuTeks) + "</td>" +
         "<td>" + esc(r.item.kode) + "</td>" +
         "<td>" + esc(r.item.nama) + "</td>" +
         "<td>" + esc(r.item.satuan) + "</td>" +
@@ -693,16 +707,17 @@ function exportExcel() {
     ["Periode", periodeTeks],
     ["Waktu Ekspor", waktuEkspor],
     [],
-    ["Kode", "Nama", "Kategori", "Satuan", "Stok Awal", "Masuk", "Keluar", "Stok Akhir"],
+    ["Waktu", "Kode", "Nama", "Kategori", "Satuan", "Stok Awal", "Masuk", "Keluar", "Stok Akhir"],
   ];
   d.rows.forEach((r) => {
+    const waktuTeks = r.waktu ? new Date(r.waktu).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }) : "-";
     mut.push([
-      r.item.kode, r.item.nama, r.item.kategori || "", r.item.satuan,
+      waktuTeks, r.item.kode, r.item.nama, r.item.kategori || "", r.item.satuan,
       r.awal, r.masuk, r.keluar, r.akhir,
     ]);
   });
   const ws1 = XLSX.utils.aoa_to_sheet(mut);
-  ws1["!cols"] = [{ wch: 14 }, { wch: 32 }, { wch: 18 }, { wch: 10 }, { wch: 11 }, { wch: 10 }, { wch: 10 }, { wch: 11 }];
+  ws1["!cols"] = [{ wch: 18 }, { wch: 14 }, { wch: 32 }, { wch: 18 }, { wch: 10 }, { wch: 11 }, { wch: 10 }, { wch: 10 }, { wch: 11 }];
 
   const now = [
     ["Stok Saat Ini"],
