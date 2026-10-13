@@ -29,7 +29,6 @@ function showPage(name) {
   if (name === "laporan") openLaporan();
 }
 
-// mencegah teks dari database dibaca sebagai kode HTML
 function esc(value) {
   return String(value ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -216,7 +215,6 @@ $("search").addEventListener("input", renderItems);
 $("filter-kategori").addEventListener("change", renderItems);
 $("filter-status").addEventListener("change", renderItems);
 
-// klik kartu ringkasan = filter cepat berdasarkan status
 document.querySelectorAll(".stat").forEach((btn) => {
   btn.addEventListener("click", () => {
     $("filter-status").value = btn.dataset.status;
@@ -235,7 +233,6 @@ $("barang-body").addEventListener("click", (e) => {
 
 /* ---------- Form tambah / ubah barang ---------- */
 
-// isi pilihan satuan
 $("f-satuan").innerHTML =
   SATUAN_UMUM.map((s) => '<option value="' + s + '">' + s + "</option>").join("") +
   '<option value="__lain">Lainnya...</option>';
@@ -324,7 +321,6 @@ $("barang-form").addEventListener("submit", async (e) => {
     const res = await sb.from("items").insert(payload).select().single();
     error = res.error;
 
-    // stok awal dicatat sebagai transaksi "masuk" supaya riwayatnya konsisten
     if (!error && stokAwal > 0) {
       const tx = await sb.from("transactions").insert({
         item_id: res.data.id,
@@ -493,6 +489,29 @@ $("tx-form").addEventListener("submit", async (e) => {
   toast("Transaksi tersimpan.");
 });
 
+async function hapusTransaksi(idTransaksi) {
+  const konfirmasi = confirm("Apakah Anda yakin ingin menghapus riwayat transaksi ini?");
+  if (!konfirmasi) return;
+
+  try {
+    const { error } = await sb
+      .from('transactions')
+      .delete()
+      .eq('id', idTransaksi);
+
+    if (error) {
+      alert("Gagal menghapus transaksi: " + error.message);
+      return;
+    }
+
+    toast("Riwayat transaksi berhasil dihapus!");
+    await loadTransactions();
+    await loadItems();
+  } catch (err) {
+    console.error("Error menghapus transaksi:", err);
+  }
+}
+
 /* ---------- Laporan ---------- */
 
 let lapData = null;
@@ -542,7 +561,6 @@ function openLaporan() {
   generateLaporan();
 }
 
-// ambil semua transaksi sejak tanggal mulai (per 1000 baris, supaya tidak terpotong)
 async function fetchTransactionsSince(startIso) {
   const all = [];
   const size = 1000;
@@ -594,7 +612,6 @@ async function generateLaporan() {
     const profilMap = {};
     (profRes.data || []).forEach((p) => { profilMap[p.id] = p.nama; });
 
-    // hitung per barang: masuk/keluar dalam periode, dan mutasi bersih setelah periode
     const stat = {};
     allItems.forEach((i) => { stat[i.id] = { masuk: 0, keluar: 0, sesudah: 0 }; });
     const periodTx = [];
@@ -696,7 +713,6 @@ function exportExcel() {
   allItems.forEach((i) => { itemMap[i.id] = i; });
   const periodeTeks = tglPanjang(d.start) + " s/d " + tglPanjang(d.end);
 
-  // Sheet 1: mutasi per periode
   const mut = [
     ["Laporan Mutasi Stok"],
     ["Periode", periodeTeks],
@@ -712,7 +728,6 @@ function exportExcel() {
   const ws1 = XLSX.utils.aoa_to_sheet(mut);
   ws1["!cols"] = [{ wch: 14 }, { wch: 32 }, { wch: 18 }, { wch: 10 }, { wch: 11 }, { wch: 10 }, { wch: 10 }, { wch: 11 }];
 
-  // Sheet 2: stok saat ini
   const now = [["Kode", "Nama", "Kategori", "Satuan", "Stok", "Stok Minimum", "Status"]];
   allItems.forEach((i) => {
     now.push([
@@ -723,7 +738,6 @@ function exportExcel() {
   const ws2 = XLSX.utils.aoa_to_sheet(now);
   ws2["!cols"] = [{ wch: 14 }, { wch: 32 }, { wch: 18 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 10 }];
 
-  // Sheet 3: riwayat transaksi pada periode
   const riwayat = [["Waktu", "Kode", "Nama", "Jenis", "Jumlah", "Satuan", "Keterangan", "Petugas"]];
   d.periodTx.forEach((t) => {
     const item = itemMap[t.item_id];
@@ -753,7 +767,6 @@ function exportExcel() {
 
 refresh();
 
-// 1. Minta Izin Notifikasi dari Pengguna saat halaman dimuat
 async function requestNotificationPermission() {
   if ('Notification' in window) {
     const permission = await Notification.requestPermission();
@@ -765,10 +778,8 @@ async function requestNotificationPermission() {
   }
 }
 
-// Panggil fungsi izin notifikasi
 requestNotificationPermission();
 
-// 2. Fungsi untuk Mengirim Notifikasi ke Service Worker
 function sendNotification(title, body) {
   if (Notification.permission === 'granted' && navigator.serviceWorker.controller) {
     navigator.serviceWorker.controller.postMessage({
@@ -782,8 +793,6 @@ function sendNotification(title, body) {
   }
 }
 
-// 3. Dengarkan Transaksi Baru dari Supabase secara Realtime
-// Catatan: Ganti 'nama_tabel_anda' dengan nama tabel transaksi Anda di Supabase (misal: 'transaksi' atau 'stok')
 supabase
   .channel('public-transaksi')
   .on(
@@ -791,43 +800,11 @@ supabase
     { event: 'INSERT', schema: 'public', table: 'transactions' },
     (payload) => {
       const dataBaru = payload.new;
-      
-      // Sesuaikan nama kolom di bawah dengan nama kolom di database Supabase Anda
       const namaBarang = dataBaru.nama_barang || dataBaru.item || 'Barang';
       const jumlah = dataBaru.jumlah || dataBaru.qty || 1;
-      const tipe = dataBaru.tipe || 'Baru'; 
-
       const judul = `🔔 Transaksi Gudang Baru!`;
       const pesan = `${namaBarang} (${jumlah} unit) telah dicatat.`;
-      
-      // Tampilkan Notifikasi
       sendNotification(judul, pesan);
     }
   )
   .subscribe();
-
-// 4. Fitur Hapus Transaksi
-async function hapusTransaksi(idTransaksi) {
-  const konfirmasi = confirm("Apakah Anda yakin ingin menghapus riwayat transaksi ini?");
-  if (!konfirmasi) return;
-
-  try {
-    const { error } = await sb
-      .from('transactions')
-      .delete()
-      .eq('id', idTransaksi);
-
-    if (error) {
-      alert("Gagal menghapus transaksi: " + error.message);
-      return;
-    }
-
-    toast("Riwayat transaksi berhasil dihapus!");
-    
-    // Refresh data tabel transaksi dan daftar barang
-    await loadTransactions();
-    await loadItems();
-  } catch (err) {
-    console.error("Error menghapus transaksi:", err);
-  }
-}
