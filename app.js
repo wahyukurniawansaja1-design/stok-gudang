@@ -401,7 +401,7 @@ $("tx-item").addEventListener("change", updateStokInfo);
 
 async function loadTransactions() {
   const body = $("tx-body");
-  body.innerHTML = '<tr><td colspan="7" class="empty">Memuat...</td></tr>';
+  body.innerHTML = '<tr><td colspan="6" class="empty">Memuat...</td></tr>';
 
   const [txRes, profRes] = await Promise.all([
     sb.from("transactions").select("*").order("created_at", { ascending: false }).limit(100),
@@ -410,7 +410,7 @@ async function loadTransactions() {
 
   if (txRes.error) {
     body.innerHTML =
-      '<tr><td colspan="7" class="empty">Gagal memuat: ' + esc(txRes.error.message) + "</td></tr>";
+      '<tr><td colspan="6" class="empty">Gagal memuat: ' + esc(txRes.error.message) + "</td></tr>";
     return;
   }
 
@@ -420,7 +420,7 @@ async function loadTransactions() {
   allItems.forEach((i) => { itemMap[i.id] = i; });
 
   if (txRes.data.length === 0) {
-    body.innerHTML = '<tr><td colspan="7" class="empty">Belum ada transaksi.</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="empty">Belum ada transaksi.</td></tr>';
     return;
   }
 
@@ -440,7 +440,6 @@ async function loadTransactions() {
         "<td>" + (masuk ? "+" : "−") + fmt(t.jumlah) + " " + esc(item ? item.satuan : "") + "</td>" +
         "<td>" + esc(t.keterangan) + "</td>" +
         "<td>" + esc(profilMap[t.user_id] || "-") + "</td>" +
-        '<td><button class="btn-small danger" onclick="hapusTransaksi(\'' + t.id + '\')">🗑️ Hapus</button></td>' +
         "</tr>"
       );
     })
@@ -488,29 +487,6 @@ $("tx-form").addEventListener("submit", async (e) => {
   await loadTransactions();
   toast("Transaksi tersimpan.");
 });
-
-async function hapusTransaksi(idTransaksi) {
-  const konfirmasi = confirm("Apakah Anda yakin ingin menghapus riwayat transaksi ini?");
-  if (!konfirmasi) return;
-
-  try {
-    const { error } = await sb
-      .from('transactions')
-      .delete()
-      .eq('id', idTransaksi);
-
-    if (error) {
-      alert("Gagal menghapus transaksi: " + error.message);
-      return;
-    }
-
-    toast("Riwayat transaksi berhasil dihapus!");
-    await loadTransactions();
-    await loadItems();
-  } catch (err) {
-    console.error("Error menghapus transaksi:", err);
-  }
-}
 
 /* ---------- Laporan ---------- */
 
@@ -766,45 +742,3 @@ function exportExcel() {
 /* ---------- Mulai ---------- */
 
 refresh();
-
-async function requestNotificationPermission() {
-  if ('Notification' in window) {
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      console.log('Izin notifikasi telah diberikan oleh pengguna.');
-    } else {
-      console.log('Izin notifikasi ditolak.');
-    }
-  }
-}
-
-requestNotificationPermission();
-
-function sendNotification(title, body) {
-  if (Notification.permission === 'granted' && navigator.serviceWorker.controller) {
-    navigator.serviceWorker.controller.postMessage({
-      type: 'SHOW_NOTIFICATION',
-      payload: {
-        title: title,
-        body: body,
-        icon: '/icon-192.png'
-      }
-    });
-  }
-}
-
-supabase
-  .channel('public-transaksi')
-  .on(
-    'postgres_changes',
-    { event: 'INSERT', schema: 'public', table: 'transactions' },
-    (payload) => {
-      const dataBaru = payload.new;
-      const namaBarang = dataBaru.nama_barang || dataBaru.item || 'Barang';
-      const jumlah = dataBaru.jumlah || dataBaru.qty || 1;
-      const judul = `🔔 Transaksi Gudang Baru!`;
-      const pesan = `${namaBarang} (${jumlah} unit) telah dicatat.`;
-      sendNotification(judul, pesan);
-    }
-  )
-  .subscribe();
