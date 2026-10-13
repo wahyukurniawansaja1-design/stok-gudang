@@ -699,10 +699,16 @@ function exportExcel() {
   const itemMap = {};
   allItems.forEach((i) => { itemMap[i.id] = i; });
   const periodeTeks = tglPanjang(d.start) + " s/d " + tglPanjang(d.end);
+  const waktuEkspor = new Date().toLocaleString("id-ID", {
+    dateStyle: "full",
+    timeStyle: "medium",
+  });
 
+  // Sheet 1: mutasi per periode dengan tambahan informasi waktu ekspor
   const mut = [
     ["Laporan Mutasi Stok"],
     ["Periode", periodeTeks],
+    ["Waktu Ekspor", waktuEkspor],
     [],
     ["Kode", "Nama", "Kategori", "Satuan", "Stok Awal", "Masuk", "Keluar", "Stok Akhir"],
   ];
@@ -715,7 +721,13 @@ function exportExcel() {
   const ws1 = XLSX.utils.aoa_to_sheet(mut);
   ws1["!cols"] = [{ wch: 14 }, { wch: 32 }, { wch: 18 }, { wch: 10 }, { wch: 11 }, { wch: 10 }, { wch: 10 }, { wch: 11 }];
 
-  const now = [["Kode", "Nama", "Kategori", "Satuan", "Stok", "Stok Minimum", "Status"]];
+  // Sheet 2: stok saat ini
+  const now = [
+    ["Stok Saat Ini"],
+    ["Waktu Ekspor", waktuEkspor],
+    [],
+    ["Kode", "Nama", "Kategori", "Satuan", "Stok", "Stok Minimum", "Status"]
+  ];
   allItems.forEach((i) => {
     now.push([
       i.kode, i.nama, i.kategori || "", i.satuan,
@@ -725,7 +737,14 @@ function exportExcel() {
   const ws2 = XLSX.utils.aoa_to_sheet(now);
   ws2["!cols"] = [{ wch: 14 }, { wch: 32 }, { wch: 18 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 10 }];
 
-  const riwayat = [["Waktu", "Kode", "Nama", "Jenis", "Jumlah", "Satuan", "Keterangan", "Petugas"]];
+  // Sheet 3: riwayat transaksi pada periode
+  const riwayat = [
+    ["Riwayat Transaksi Periode"],
+    ["Periode", periodeTeks],
+    ["Waktu Ekspor", waktuEkspor],
+    [],
+    ["Waktu", "Kode", "Nama", "Jenis", "Jumlah", "Satuan", "Keterangan", "Petugas"]
+  ];
   d.periodTx.forEach((t) => {
     const item = itemMap[t.item_id];
     riwayat.push([
