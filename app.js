@@ -537,26 +537,6 @@ function openLaporan() {
   generateLaporan();
 }
 
-async function fetchTransactionsSince(startIso) {
-  const all = [];
-  const size = 1000;
-  let from = 0;
-  while (true) {
-    const { data, error } = await sb
-      .from("transactions")
-      .select("*")
-      .gte("created_at", startIso)
-      .order("created_at", { ascending: true })
-      .order("id", { ascending: true })
-      .range(from, from + size - 1);
-    if (error) throw error;
-    all.push(...data);
-    if (data.length < size) break;
-    from += size;
-  }
-  return all;
-}
-
 async function generateLaporan() {
   const dari = $("lap-dari").value;
   const sampai = $("lap-sampai").value;
@@ -580,8 +560,15 @@ async function generateLaporan() {
 
   try {
     await loadItems();
-    const [txs, profRes] = await Promise.all([
-      fetchTransactionsSince(start.toISOString()),
+    
+    const { data: txs, error } = await sb
+      .from("transactions")
+      .select("*")
+      .order("created_at", { ascending: true });
+
+    if (error) throw error;
+
+    const [profRes] = await Promise.all([
       sb.from("profiles").select("id, nama"),
     ]);
 
@@ -589,23 +576,23 @@ async function generateLaporan() {
     (profRes.data || []).forEach((p) => { profilMap[p.id] = p.nama; });
 
     const stat = {};
-    allItems.forEach((i) => { stat[i.id] = { masuk: 0, keluar: 0, sesudah: 0 }; });
+    allItems.forEach((i) => { 
+      stat[i.id] = { sesudah: 0, masuk: 0, keluar: 0 }; 
+    });
     const periodTx = [];
 
     txs.forEach((t) => {
       const s = stat[t.item_id];
       if (!s) return;
       const jumlah = Number(t.jumlah);
-      const isStokAwal = t.keterangan && t.keterangan.toLowerCase().includes("stok awal");
+      const tanda = t.jenis === "masuk" ? 1 : -1;
+      const tDate = new Date(t.created_at);
 
-      if (new Date(t.created_at) > end) {
-        const tanda = t.jenis === "masuk" ? 1 : -1;
+      if (tDate > end) {
         s.sesudah += tanda * jumlah;
-      } else {
+      } else if (tDate >= start && tDate <= end) {
         periodTx.push(t);
-        if (isStokAwal) {
-          s.stokAwalTransaksi = (s.stokAwalTransaksi || 0) + jumlah;
-        } else if (t.jenis === "masuk") {
+        if (t.jenis === "masuk") {
           s.masuk += jumlah;
         } else {
           s.keluar += jumlah;
@@ -616,8 +603,8 @@ async function generateLaporan() {
     const rows = allItems.map((i) => {
       const s = stat[i.id];
       const akhir = Number(i.stok) - s.sesudah;
-      const awal = (s.stokAwalTransaksi || 0) + (s.awalPeriode || 0);
-      
+      const awal = akhir - s.masuk + s.keluar;
+
       return {
         item: i,
         awal: round6(awal),
