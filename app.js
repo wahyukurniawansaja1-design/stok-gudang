@@ -1,4 +1,4 @@
-const sb = supabase.createClient(https://dofjutdoxuyihnpzhnhp.supabase.co, sb_publishable_3zVibsOlQcpXoGNl8cup7Q_AhiRLf4-);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = (id) => document.getElementById(id);
 
 const SATUAN_UMUM = [
