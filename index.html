@@ -1,428 +1,85 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#2563eb">
-  <link rel="apple-touch-icon" href="/icon-192.png">
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Stok Gudang</title>
-  <style>
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      background: #f3f4f6;
-      color: #1f2937;
-    }
-    .hidden { display: none !important; }
-    .center { text-align: center; margin-top: 20vh; }
-    .muted { color: #6b7280; margin-top: 0; font-size: 0.9rem; }
-    .error { color: #b91c1c; font-size: 0.9rem; min-height: 1.2em; margin: 8px 0 0; }
-    .success { color: #166534; font-size: 0.9rem; min-height: 1.2em; margin: 8px 0 0; }
-
-    /* tombol */
-    button {
-      font: inherit;
-      cursor: pointer;
-      border: 0;
-      border-radius: 8px;
-      padding: 10px 14px;
-      background: #2563eb;
-      color: #fff;
-    }
-    button:disabled { opacity: 0.6; cursor: default; }
-    button.secondary { background: #e5e7eb; color: #1f2937; }
-    button.danger { background: #dc2626; }
-    .btn-block { width: 100%; margin-top: 16px; }
-    .btn-small { padding: 6px 10px; font-size: 0.85rem; }
-
-    /* form */
-    label { display: block; margin: 12px 0 4px; font-size: 0.9rem; }
-    input, select {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      font: inherit;
-      background: #fff;
-    }
-    .input-group { display: flex; }
-    .input-group input {
-      flex: 1;
-      min-width: 0;
-      border-top-right-radius: 0;
-      border-bottom-right-radius: 0;
-    }
-    .input-group .unit {
-      display: flex;
-      align-items: center;
-      padding: 0 12px;
-      background: #f3f4f6;
-      border: 1px solid #d1d5db;
-      border-left: 0;
-      border-radius: 0 8px 8px 0;
-      color: #4b5563;
-      font-size: 0.9rem;
-      white-space: nowrap;
-    }
-    #f-satuan-lain { margin-top: 6px; }
-
-    /* kartu login */
-    .card {
-      max-width: 380px;
-      margin: 12vh auto 0;
-      background: #fff;
-      padding: 24px;
-      border-radius: 12px;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-    }
-    .card h1 { margin: 0 0 4px; font-size: 1.5rem; }
-
-    /* halaman utama */
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
-      background: #fff;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-    }
-    .user { display: flex; align-items: center; gap: 10px; font-size: 0.9rem; }
-    .tabs { display: flex; gap: 6px; max-width: 1000px; margin: 12px auto 0; padding: 0 12px; }
-    .tab { background: #e5e7eb; color: #1f2937; }
-    .tab.active { background: #2563eb; color: #fff; }
-    .container { max-width: 1000px; margin: 12px auto 24px; padding: 0 12px; }
-    .section-title { font-size: 1.1rem; margin: 20px 0 8px; }
-
-    /* kartu ringkasan */
-    .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
-    .stat {
-      background: #fff;
-      color: #1f2937;
-      text-align: left;
-      border-radius: 12px;
-      padding: 12px 14px;
-      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
-    }
-    .stat-num { display: block; font-size: 1.6rem; font-weight: 700; }
-    .stat-label { font-size: 0.85rem; color: #6b7280; }
-    .stat.warn .stat-num { color: #b45309; }
-    .stat.out .stat-num { color: #b91c1c; }
-
-    /* toolbar */
-    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-    .toolbar input { flex: 1 1 200px; width: auto; }
-    .toolbar select { flex: 0 1 160px; width: auto; }
-
-    .panel {
-      background: #fff;
-      padding: 16px;
-      border-radius: 12px;
-      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
-      max-width: 480px;
-    }
-    .panel h2 { margin: 0 0 4px; font-size: 1.1rem; }
-
-    /* tabel */
-    .table-wrap {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
-      overflow-x: auto;
-    }
-    table { width: 100%; border-collapse: collapse; min-width: 680px; }
-    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0f1f3; }
-    thead th { background: #f9fafb; font-size: 0.85rem; color: #4b5563; }
-    td.empty { text-align: center; color: #6b7280; padding: 24px; }
-    td.aksi { white-space: nowrap; }
-    td.num { font-weight: 600; }
-    .badge { padding: 2px 8px; border-radius: 999px; font-size: 0.8rem; }
-    .badge.ok { background: #dcfce7; color: #166534; }
-    .badge.warn { background: #fef3c7; color: #92400e; }
-    .badge.out { background: #fee2e2; color: #991b1b; }
-
-    /* laporan */
-    .range { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-    .panel .form-actions { margin-top: 12px; }
-    #lap-info { margin: 12px 2px 8px; }
-    th.r, td.r { text-align: right; }
-    td.pos { color: #166534; font-weight: 600; }
-    td.neg { color: #b91c1c; font-weight: 600; }
-    td.zero { color: #9ca3af; }
-
-    /* dialog */
-    dialog {
-      border: 0;
-      border-radius: 12px;
-      padding: 20px;
-      width: min(420px, 92vw);
-    }
-    dialog::backdrop { background: rgba(0, 0, 0, 0.4); }
-    dialog h2 { margin: 0 0 4px; font-size: 1.25rem; }
-    .form-actions { display: flex; gap: 8px; margin-top: 16px; }
-    .form-actions button { flex: 1; }
-
-    /* notifikasi kecil */
-    #toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #111827;
-      color: #fff;
-      padding: 10px 18px;
-      border-radius: 999px;
-      font-size: 0.9rem;
-      z-index: 50;
-    }
-  </style>
-</head>
-<body>
-
-  <p id="view-loading" class="center">Memuat...</p>
-
-  <!-- Halaman login -->
-  <div id="view-login" class="card hidden">
-    <h1>Stok Gudang</h1>
-    <p class="muted">Masuk untuk melanjutkan</p>
-    <form id="login-form">
-      <label for="email">Email</label>
-      <input id="email" type="email" required>
-      <label for="password">Password</label>
-      <input id="password" type="password" required>
-      <p id="login-error" class="error"></p>
-      <button id="login-btn" class="btn-block" type="submit">Masuk</button>
-    </form>
-  </div>
-
-  <!-- Halaman utama -->
-  <div id="view-main" class="hidden">
-    <header class="topbar">
-      <strong>Stok Gudang</strong>
-      <div class="user">
-        <span id="user-info"></span>
-        <button id="logout-btn" class="btn-small secondary" type="button">Keluar</button>
-      </div>
-    </header>
-
-    <nav class="tabs">
-      <button class="tab active" data-page="barang" type="button">Barang</button>
-      <button class="tab" data-page="transaksi" type="button">Transaksi</button>
-      <button class="tab" data-page="laporan" type="button">Laporan</button>
-    </nav>
-
-    <main class="container">
-
-      <!-- Halaman: Barang -->
-      <section id="page-barang">
-        <div class="summary">
-          <button class="stat" data-status="" type="button">
-            <span class="stat-num" id="sum-total">0</span>
-            <span class="stat-label">Jenis barang</span>
-          </button>
-          <button class="stat warn" data-status="menipis" type="button">
-            <span class="stat-num" id="sum-menipis">0</span>
-            <span class="stat-label">Stok menipis</span>
-          </button>
-          <button class="stat out" data-status="habis" type="button">
-            <span class="stat-num" id="sum-habis">0</span>
-            <span class="stat-label">Stok habis</span>
-          </button>
-        </div>
-
-        <div class="toolbar">
-          <input id="search" type="search" placeholder="Cari kode / nama barang...">
-          <select id="filter-kategori"></select>
-          <select id="filter-status">
-            <option value="">Semua status</option>
-            <option value="aman">Aman</option>
-            <option value="menipis">Menipis</option>
-            <option value="habis">Habis</option>
-          </select>
-          <button id="add-btn" class="hidden" type="button">+ Tambah Barang</button>
-        </div>
-        <p id="barang-msg" class="error"></p>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Kode</th>
-                <th>Nama</th>
-                <th>Kategori</th>
-                <th>Stok</th>
-                <th>Satuan</th>
-                <th>Stok Min</th>
-                <th>Status</th>
-                <th id="th-aksi" class="hidden">Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="barang-body"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Halaman: Transaksi -->
-      <section id="page-transaksi" class="hidden">
-        <div class="panel">
-          <h2>Catat Transaksi</h2>
-          <form id="tx-form">
-            <label for="tx-item">Barang</label>
-            <select id="tx-item" required></select>
-            <p id="tx-stok" class="muted"></p>
-
-            <label for="tx-jenis">Jenis</label>
-            <select id="tx-jenis">
-              <option value="masuk">Barang masuk</option>
-              <option value="keluar">Barang keluar</option>
-            </select>
-
-            <label for="tx-jumlah">Jumlah</label>
-            <div class="input-group">
-              <input id="tx-jumlah" type="number" min="0" step="any" required>
-              <span class="unit" id="tx-unit">-</span>
-            </div>
-
-            <label for="tx-ket">Keterangan (opsional)</label>
-            <input id="tx-ket" placeholder="mis. dari supplier, dipakai proyek A">
-
-            <p id="tx-msg" class="error"></p>
-            <button id="tx-btn" class="btn-block" type="submit">Simpan Transaksi</button>
-          </form>
-        </div>
-
-        <h2 class="section-title">Riwayat Transaksi (100 terakhir)</h2>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Waktu</th>
-                <th>Barang</th>
-                <th>Jenis</th>
-                <th>Jumlah</th>
-                <th>Keterangan</th>
-                <th>Petugas</th>
-              </tr>
-            </thead>
-            <tbody id="tx-body"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Halaman: Laporan -->
-      <section id="page-laporan" class="hidden">
-        <div class="panel">
-          <h2>Laporan Mutasi Stok</h2>
-          <p class="muted">Stok awal, barang masuk, barang keluar, dan stok akhir per barang pada periode yang dipilih.</p>
-          <div class="range">
-            <div>
-              <label for="lap-dari">Dari</label>
-              <input id="lap-dari" type="date">
-            </div>
-            <div>
-              <label for="lap-sampai">Sampai</label>
-              <input id="lap-sampai" type="date">
-            </div>
-          </div>
-          <div class="quick">
-            <button class="btn-small secondary" data-range="7" type="button">7 hari terakhir</button>
-            <button class="btn-small secondary" data-range="bulan-ini" type="button">Bulan ini</button>
-            <button class="btn-small secondary" data-range="bulan-lalu" type="button">Bulan lalu</button>
-            <button class="btn-small secondary" data-range="tahun-ini" type="button">Tahun ini</button>
-          </div>
-          <div class="form-actions">
-            <button id="lap-tampil" type="button">Tampilkan</button>
-            <button id="lap-export" class="secondary" type="button">Unduh Excel</button>
-          </div>
-          <p id="lap-msg" class="error"></p>
-        </div>
-
-        <p id="lap-info" class="muted"></p>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Kode</th>
-                <th>Nama</th>
-                <th>Satuan</th>
-                <th class="r">Stok Awal</th>
-                <th class="r">Masuk</th>
-                <th class="r">Keluar</th>
-                <th class="r">Stok Akhir</th>
-              </tr>
-            </thead>
-            <tbody id="lap-body"></tbody>
-          </table>
-        </div>
-      </section>
-
-    </main>
-  </div>
-
-  <!-- Form tambah / ubah barang -->
-  <dialog id="barang-dialog">
-    <h2 id="form-title">Tambah Barang</h2>
-    <form id="barang-form">
-      <input id="f-id" type="hidden">
-
-      <label for="f-kode">Kode barang</label>
-      <input id="f-kode" required>
-
-      <label for="f-nama">Nama barang</label>
-      <input id="f-nama" required>
-
-      <label for="f-kategori">Kategori</label>
-      <input id="f-kategori" list="kategori-list" autocomplete="off">
-      <datalist id="kategori-list"></datalist>
-
-      <label for="f-satuan">Satuan</label>
-      <select id="f-satuan"></select>
-      <input id="f-satuan-lain" class="hidden" placeholder="Tulis satuan, mis. kotak">
-
-      <div id="f-stok-wrap">
-        <label for="f-stok">Stok awal</label>
-        <div class="input-group">
-          <input id="f-stok" type="number" min="0" step="any" placeholder="0">
-          <span class="unit"></span>
-        </div>
-        <p class="muted">Dicatat otomatis sebagai transaksi "Stok awal".</p>
-      </div>
-
-      <label for="f-min">Stok minimum (batas peringatan)</label>
-      <div class="input-group">
-        <input id="f-min" type="number" min="0" step="any" value="0">
-        <span class="unit"></span>
-      </div>
-
-      <p id="f-edit-note" class="muted hidden">
-        Jumlah stok tidak diubah di sini. Gunakan tab Transaksi supaya riwayatnya tercatat.
-      </p>
-
-      <p id="form-error" class="error"></p>
-      <div class="form-actions">
-        <button id="cancel-btn" class="secondary" type="button">Batal</button>
-        <button id="save-btn" type="submit">Simpan</button>
-      </div>
-    </form>
-  </dialog>
-
-  <div id="toast" class="hidden"></div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="config.js"></script>
-  <script src="app.js"></script>
-  <!-- Script Pendaftaran Service Worker -->
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then((reg) => console.log('Service Worker berhasil terdaftar: ', reg.scope))
-        .catch((err) => console.log('Pendaftaran Service Worker gagal: ', err));
-    });
+function exportExcel() {
+  const msg = $("lap-msg");
+  if (typeof XLSX === "undefined") {
+    msg.textContent = "Library Excel belum termuat. Periksa koneksi internet, lalu muat ulang halaman.";
+    return;
   }
-</script>
-</body>
-</html>
+  if (!lapData) {
+    msg.textContent = "Tampilkan laporan dulu sebelum diunduh.";
+    return;
+  }
+  msg.textContent = "";
+
+  const d = lapData;
+  const itemMap = {};
+  allItems.forEach((i) => { itemMap[i.id] = i; });
+  const periodeTeks = tglPanjang(d.start) + " s/d " + tglPanjang(d.end);
+  const waktuEkspor = new Date().toLocaleString("id-ID", {
+    dateStyle: "full",
+    timeStyle: "medium",
+  });
+
+  // Sheet 1: mutasi per periode dengan tambahan informasi waktu ekspor
+  const mut = [
+    ["Laporan Mutasi Stok"],
+    ["Periode", periodeTeks],
+    ["Waktu Ekspor", waktuEkspor],
+    [],
+    ["Kode", "Nama", "Kategori", "Satuan", "Stok Awal", "Masuk", "Keluar", "Stok Akhir"],
+  ];
+  d.rows.forEach((r) => {
+    mut.push([
+      r.item.kode, r.item.nama, r.item.kategori || "", r.item.satuan,
+      r.awal, r.masuk, r.keluar, r.akhir,
+    ]);
+  });
+  const ws1 = XLSX.utils.aoa_to_sheet(mut);
+  ws1["!cols"] = [{ wch: 14 }, { wch: 32 }, { wch: 18 }, { wch: 10 }, { wch: 11 }, { wch: 10 }, { wch: 10 }, { wch: 11 }];
+
+  // Sheet 2: stok saat ini
+  const now = [
+    ["Stok Saat Ini"],
+    ["Waktu Ekspor", waktuEkspor],
+    [],
+    ["Kode", "Nama", "Kategori", "Satuan", "Stok", "Stok Minimum", "Status"]
+  ];
+  allItems.forEach((i) => {
+    now.push([
+      i.kode, i.nama, i.kategori || "", i.satuan,
+      Number(i.stok), Number(i.stok_minimum), STATUS_LABEL[statusOf(i)],
+    ]);
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(now);
+  ws2["!cols"] = [{ wch: 14 }, { wch: 32 }, { wch: 18 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 10 }];
+
+  // Sheet 3: riwayat transaksi pada periode
+  const riwayat = [
+    ["Riwayat Transaksi Periode"],
+    ["Periode", periodeTeks],
+    ["Waktu Ekspor", waktuEkspor],
+    [],
+    ["Waktu", "Kode", "Nama", "Jenis", "Jumlah", "Satuan", "Keterangan", "Petugas"]
+  ];
+  d.periodTx.forEach((t) => {
+    const item = itemMap[t.item_id];
+    riwayat.push([
+      new Date(t.created_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }),
+      item ? item.kode : "",
+      item ? item.nama : "(barang dihapus)",
+      t.jenis === "masuk" ? "Masuk" : "Keluar",
+      Number(t.jumlah),
+      item ? item.satuan : "",
+      t.keterangan || "",
+      d.profilMap[t.user_id] || "",
+    ]);
+  });
+  const ws3 = XLSX.utils.aoa_to_sheet(riwayat);
+  ws3["!cols"] = [{ wch: 20 }, { wch: 14 }, { wch: 32 }, { wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 30 }, { wch: 20 }];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws1, "Mutasi Periode");
+  XLSX.utils.book_append_sheet(wb, ws2, "Stok Saat Ini");
+  XLSX.utils.book_append_sheet(wb, ws3, "Riwayat Transaksi");
+  XLSX.writeFile(wb, "laporan-stok_" + d.dari + "_sd_" + d.sampai + ".xlsx");
+  toast("File Excel diunduh.");
+}
