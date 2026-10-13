@@ -561,7 +561,6 @@ async function generateLaporan() {
   try {
     await loadItems();
     
-    // Ambil seluruh riwayat transaksi diurutkan dari yang paling awal
     const { data: txs, error } = await sb
       .from("transactions")
       .select("*")
@@ -578,7 +577,7 @@ async function generateLaporan() {
 
     const stat = {};
     allItems.forEach((i) => { 
-      stat[i.id] = { awal: 0, masuk: 0, keluar: 0, waktuPertama: null, sudahAdaAwal: false }; 
+      stat[i.id] = { stokAwalInput: 0, masuk: 0, keluar: 0, waktuPertama: null, mutasiSebelum: 0 }; 
     });
     const periodTx = [];
 
@@ -588,19 +587,24 @@ async function generateLaporan() {
       const jumlah = Number(t.jumlah);
       const tDate = new Date(t.created_at);
       const isMasuk = t.jenis === "masuk";
+      const isStokAwalInput = t.keterangan && t.keterangan.toLowerCase().includes("stok awal");
 
       if (!s.waktuPertama) {
         s.waktuPertama = t.created_at;
       }
 
+      if (isStokAwalInput && s.stokAwalInput === 0) {
+        // Ambil langsung nilai dari inputan stok awal saat barang dibuat
+        s.stokAwalInput = jumlah;
+      }
+
       if (tDate < start) {
-        if (isMasuk) s.awal += jumlah;
-        else s.awal -= jumlah;
+        if (!isStokAwalInput) {
+          if (isMasuk) s.mutasiSebelum += jumlah;
+          else s.mutasiSebelum -= jumlah;
+        }
       } else if (tDate >= start && tDate <= end) {
         periodTx.push(t);
-        if (!s.sudahAdaAwal) {
-          s.sudahAdaAwal = true;
-        }
         if (isMasuk) {
           s.masuk += jumlah;
         } else {
@@ -611,7 +615,9 @@ async function generateLaporan() {
 
     const rows = allItems.map((i) => {
       const s = stat[i.id];
-      const awal = s.awal < 0 ? 0 : s.awal;
+      // Stok Awal di laporan disamakan dengan inputan stok awal ditambah mutasi sebelum periode jika ada
+      let awal = s.stokAwalInput + s.mutasiSebelum;
+      if (awal < 0) awal = 0;
       const akhir = awal + s.masuk - s.keluar;
 
       return {
