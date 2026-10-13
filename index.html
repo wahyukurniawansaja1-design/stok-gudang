@@ -310,6 +310,12 @@
           </table>
         </div>
       </section>
+      <!-- Contoh kolom aksi di tabel transaksi -->
+      <td>
+        <button class="btn-delete-transaksi" onclick="hapusTransaksi('${transaksi.id}')">
+          🗑️ Hapus
+        </button>
+      </td>
 
       <!-- Halaman: Laporan -->
       <section id="page-laporan" class="hidden">
@@ -360,12 +366,7 @@
 
     </main>
   </div>
-  <!-- Contoh kolom aksi di tabel transaksi -->
-  <td>
-    <button class="btn-delete-transaksi" onclick="hapusTransaksi('${transaksi.id}')">
-      🗑️ Hapus
-    </button>
-  </td>
+
   <!-- Form tambah / ubah barang -->
   <dialog id="barang-dialog">
     <h2 id="form-title">Tambah Barang</h2>
