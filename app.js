@@ -599,13 +599,11 @@ async function generateLaporan() {
       const isStokAwal = t.keterangan && t.keterangan.toLowerCase().includes("stok awal");
 
       if (new Date(t.created_at) > end) {
-        // Mutasi setelah periode laporan
         const tanda = t.jenis === "masuk" ? 1 : -1;
         s.sesudah += tanda * jumlah;
       } else {
         periodTx.push(t);
         if (isStokAwal) {
-          // Jika transaksi adalah pencatatan stok awal, masukkan sebagai basis stok awal
           s.stokAwalTransaksi = (s.stokAwalTransaksi || 0) + jumlah;
         } else if (t.jenis === "masuk") {
           s.masuk += jumlah;
@@ -618,7 +616,6 @@ async function generateLaporan() {
     const rows = allItems.map((i) => {
       const s = stat[i.id];
       const akhir = Number(i.stok) - s.sesudah;
-      // Stok awal dihitung dari basis transaksi stok awal ditambah mutasi sebelum/selama periode jika diperlukan
       const awal = (s.stokAwalTransaksi || 0) + (s.awalPeriode || 0);
       
       return {
@@ -704,7 +701,6 @@ function exportExcel() {
     timeStyle: "medium",
   });
 
-  // Sheet 1: mutasi per periode dengan tambahan informasi waktu ekspor
   const mut = [
     ["Laporan Mutasi Stok"],
     ["Periode", periodeTeks],
@@ -721,7 +717,6 @@ function exportExcel() {
   const ws1 = XLSX.utils.aoa_to_sheet(mut);
   ws1["!cols"] = [{ wch: 14 }, { wch: 32 }, { wch: 18 }, { wch: 10 }, { wch: 11 }, { wch: 10 }, { wch: 10 }, { wch: 11 }];
 
-  // Sheet 2: stok saat ini
   const now = [
     ["Stok Saat Ini"],
     ["Waktu Ekspor", waktuEkspor],
@@ -737,7 +732,6 @@ function exportExcel() {
   const ws2 = XLSX.utils.aoa_to_sheet(now);
   ws2["!cols"] = [{ wch: 14 }, { wch: 32 }, { wch: 18 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 10 }];
 
-  // Sheet 3: riwayat transaksi pada periode
   const riwayat = [
     ["Riwayat Transaksi Periode"],
     ["Periode", periodeTeks],
