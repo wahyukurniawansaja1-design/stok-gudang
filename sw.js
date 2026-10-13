@@ -44,3 +44,18 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(event.request))
   );
 });
+
+// Listener untuk menerima perintah penayangan notifikasi dari aplikasi utama
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, body, icon } = event.data.payload;
+
+    self.registration.showNotification(title, {
+      body: body,
+      icon: icon || '/icon-192.png',
+      badge: '/icon-192.png',
+      vibrate: [200, 100, 200],
+      tag: 'transaksi-gudang'
+    });
+  }
+});
