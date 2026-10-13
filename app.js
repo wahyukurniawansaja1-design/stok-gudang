@@ -596,20 +596,31 @@ async function generateLaporan() {
       const s = stat[t.item_id];
       if (!s) return;
       const jumlah = Number(t.jumlah);
-      const tanda = t.jenis === "masuk" ? 1 : -1;
+      const isStokAwal = t.keterangan && t.keterangan.toLowerCase().includes("stok awal");
+
       if (new Date(t.created_at) > end) {
+        // Mutasi setelah periode laporan
+        const tanda = t.jenis === "masuk" ? 1 : -1;
         s.sesudah += tanda * jumlah;
       } else {
         periodTx.push(t);
-        if (tanda > 0) s.masuk += jumlah;
-        else s.keluar += jumlah;
+        if (isStokAwal) {
+          // Jika transaksi adalah pencatatan stok awal, masukkan sebagai basis stok awal
+          s.stokAwalTransaksi = (s.stokAwalTransaksi || 0) + jumlah;
+        } else if (t.jenis === "masuk") {
+          s.masuk += jumlah;
+        } else {
+          s.keluar += jumlah;
+        }
       }
     });
 
     const rows = allItems.map((i) => {
       const s = stat[i.id];
       const akhir = Number(i.stok) - s.sesudah;
-      const awal = akhir - s.masuk + s.keluar;
+      // Stok awal dihitung dari basis transaksi stok awal ditambah mutasi sebelum/selama periode jika diperlukan
+      const awal = (s.stokAwalTransaksi || 0) + (s.awalPeriode || 0);
+      
       return {
         item: i,
         awal: round6(awal),
