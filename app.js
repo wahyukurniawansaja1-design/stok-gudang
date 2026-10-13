@@ -751,3 +751,56 @@ function exportExcel() {
 /* ---------- Mulai ---------- */
 
 refresh();
+
+// 1. Minta Izin Notifikasi dari Pengguna saat halaman dimuat
+async function requestNotificationPermission() {
+  if ('Notification' in window) {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      console.log('Izin notifikasi telah diberikan oleh pengguna.');
+    } else {
+      console.log('Izin notifikasi ditolak.');
+    }
+  }
+}
+
+// Panggil fungsi izin notifikasi
+requestNotificationPermission();
+
+// 2. Fungsi untuk Mengirim Notifikasi ke Service Worker
+function sendNotification(title, body) {
+  if (Notification.permission === 'granted' && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: 'SHOW_NOTIFICATION',
+      payload: {
+        title: title,
+        body: body,
+        icon: '/icon-192.png'
+      }
+    });
+  }
+}
+
+// 3. Dengarkan Transaksi Baru dari Supabase secara Realtime
+// Catatan: Ganti 'nama_tabel_anda' dengan nama tabel transaksi Anda di Supabase (misal: 'transaksi' atau 'stok')
+supabase
+  .channel('public-transaksi')
+  .on(
+    'postgres_changes',
+    { event: 'INSERT', schema: 'public', table: 'nama_tabel_anda' },
+    (payload) => {
+      const dataBaru = payload.new;
+      
+      // Sesuaikan nama kolom di bawah dengan nama kolom di database Supabase Anda
+      const namaBarang = dataBaru.nama_barang || dataBaru.item || 'Barang';
+      const jumlah = dataBaru.jumlah || dataBaru.qty || 1;
+      const tipe = dataBaru.tipe || 'Baru'; 
+
+      const judul = `🔔 Transaksi Gudang Baru!`;
+      const pesan = `${namaBarang} (${jumlah} unit) telah dicatat.`;
+      
+      // Tampilkan Notifikasi
+      sendNotification(judul, pesan);
+    }
+  )
+  .subscribe();
