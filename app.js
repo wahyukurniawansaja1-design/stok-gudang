@@ -804,3 +804,28 @@ supabase
     }
   )
   .subscribe();
+async function hapusTransaksi(idTransaksi) {
+  const konfirmasi = confirm("Apakah Anda yakin ingin menghapus riwayat transaksi ini?");
+  if (!konfirmasi) return;
+
+  try {
+    // 1. Hapus transaksi dari Supabase
+    const { error } = await supabase
+      .from('transaksi') // Ganti dengan nama tabel transaksi Anda jika berbeda
+      .delete()
+      .eq('id', idTransaksi);
+
+    if (error) {
+      alert("Gagal menghapus transaksi: " + error.message);
+      return;
+    }
+
+    alert("Riwayat transaksi berhasil dihapus!");
+    
+    // 2. Refresh data/tampilan tabel
+    muatDataTransaksi(); // Panggil fungsi muat data transaksi Anda
+    muatDataBarang();    // Panggil fungsi muat data barang (jika ada update stok)
+  } catch (err) {
+    console.error("Error menghapus transaksi:", err);
+  }
+}
