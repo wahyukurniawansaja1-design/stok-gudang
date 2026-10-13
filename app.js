@@ -1,4 +1,4 @@
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = supabase.createClient(https://dofjutdoxuyihnpzhnhp.supabase.co, sb_publishable_3zVibsOlQcpXoGNl8cup7Q_AhiRLf4-);
 const $ = (id) => document.getElementById(id);
 
 const SATUAN_UMUM = [
@@ -405,7 +405,7 @@ $("tx-item").addEventListener("change", updateStokInfo);
 
 async function loadTransactions() {
   const body = $("tx-body");
-  body.innerHTML = '<tr><td colspan="6" class="empty">Memuat...</td></tr>';
+  body.innerHTML = '<tr><td colspan="7" class="empty">Memuat...</td></tr>';
 
   const [txRes, profRes] = await Promise.all([
     sb.from("transactions").select("*").order("created_at", { ascending: false }).limit(100),
@@ -414,7 +414,7 @@ async function loadTransactions() {
 
   if (txRes.error) {
     body.innerHTML =
-      '<tr><td colspan="6" class="empty">Gagal memuat: ' + esc(txRes.error.message) + "</td></tr>";
+      '<tr><td colspan="7" class="empty">Gagal memuat: ' + esc(txRes.error.message) + "</td></tr>";
     return;
   }
 
@@ -424,7 +424,7 @@ async function loadTransactions() {
   allItems.forEach((i) => { itemMap[i.id] = i; });
 
   if (txRes.data.length === 0) {
-    body.innerHTML = '<tr><td colspan="6" class="empty">Belum ada transaksi.</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="empty">Belum ada transaksi.</td></tr>';
     return;
   }
 
@@ -444,6 +444,7 @@ async function loadTransactions() {
         "<td>" + (masuk ? "+" : "−") + fmt(t.jumlah) + " " + esc(item ? item.satuan : "") + "</td>" +
         "<td>" + esc(t.keterangan) + "</td>" +
         "<td>" + esc(profilMap[t.user_id] || "-") + "</td>" +
+        '<td><button class="btn-small danger" onclick="hapusTransaksi(\'' + t.id + '\')">🗑️ Hapus</button></td>' +
         "</tr>"
       );
     })
@@ -787,7 +788,7 @@ supabase
   .channel('public-transaksi')
   .on(
     'postgres_changes',
-    { event: 'INSERT', schema: 'public', table: 'nama_tabel_anda' },
+    { event: 'INSERT', schema: 'public', table: 'transactions' },
     (payload) => {
       const dataBaru = payload.new;
       
@@ -804,14 +805,15 @@ supabase
     }
   )
   .subscribe();
+
+// 4. Fitur Hapus Transaksi
 async function hapusTransaksi(idTransaksi) {
   const konfirmasi = confirm("Apakah Anda yakin ingin menghapus riwayat transaksi ini?");
   if (!konfirmasi) return;
 
   try {
-    // 1. Hapus transaksi dari Supabase
-    const { error } = await supabase
-      .from('transaksi') // Ganti dengan nama tabel transaksi Anda jika berbeda
+    const { error } = await sb
+      .from('transactions')
       .delete()
       .eq('id', idTransaksi);
 
@@ -820,11 +822,11 @@ async function hapusTransaksi(idTransaksi) {
       return;
     }
 
-    alert("Riwayat transaksi berhasil dihapus!");
+    toast("Riwayat transaksi berhasil dihapus!");
     
-    // 2. Refresh data/tampilan tabel
-    muatDataTransaksi(); // Panggil fungsi muat data transaksi Anda
-    muatDataBarang();    // Panggil fungsi muat data barang (jika ada update stok)
+    // Refresh data tabel transaksi dan daftar barang
+    await loadTransactions();
+    await loadItems();
   } catch (err) {
     console.error("Error menghapus transaksi:", err);
   }
