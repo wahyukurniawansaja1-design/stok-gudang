@@ -1,24 +1,46 @@
 const CACHE_NAME = 'stok-gudang-v1';
-const urlsToCache = [
+const ASSETS = [
   '/',
   '/index.html',
-  // Tambahkan aset statis penting lainnya (CSS, JS utama) jika diperlukan
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png'
 ];
 
-// Install Service Worker dan Cache aset
+// Install event
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache);
+      return cache.addAll(ASSETS);
     })
   );
+  self.skipWaiting();
 });
 
-// Ambil data dari cache jika offline
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+// Activate event
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== CACHE_NAME) return caches.delete(key);
+        })
+      );
     })
+  );
+  self.clients.claim();
+});
+
+// Fetch event (Network First strategy)
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        const resClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, resClone));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
